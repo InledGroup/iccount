@@ -10,11 +10,14 @@ const CONTENT_SECURITY_POLICY = [
   "base-uri 'none'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "form-action 'self'",
+  // OAuth necesita redirigir el POST de consentimiento al redirect_uri del
+  // cliente (otro origen HTTPS). Chrome y Safari aplican form-action también
+  // a la cadena de redirects, no solo al action del formulario.
+  "form-action 'self' https:",
   "img-src 'self' data: https:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self'",
-  "connect-src 'self'",
+  "script-src 'self' https://static.cloudflareinsights.com",
+  "connect-src 'self' https://cloudflareinsights.com",
 ].join('; ');
 
 export function securityHeaders(url: URL): Record<string, string> {
