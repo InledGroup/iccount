@@ -838,17 +838,11 @@ legend {
 }
 
 .app-icon {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(140deg, #35a8f6, #2f6fe0 55%, #f0453f);
-  color: #fff;
-  font-size: 1.35rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.45);
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.16));
   margin: 0 auto 1rem;
 }
 

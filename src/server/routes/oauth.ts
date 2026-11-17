@@ -36,7 +36,7 @@ import {
   verifyJwtAnyAudience,
 } from '../jwt';
 import { buildClearedSessionCookie, readSession } from '../session';
-import { NO_STORE, rejectCrossOrigin } from '../http';
+import { NO_STORE } from '../http';
 import type { AppEnv } from '../types';
 import type { Context } from 'hono';
 
@@ -255,9 +255,10 @@ oauth.get('/authorize', async (c) => {
 // ---------------------------------------------------------------------------
 
 oauth.post('/authorize/decision', async (c) => {
-  const crossOrigin = rejectCrossOrigin(c);
-  if (crossOrigin) return crossOrigin;
-
+  // No se exige que Origin coincida con el host del Worker: la pantalla de
+  // consentimiento puede venir de otro origen tras el flujo SSO. La defensa
+  // CSRF es el JWT firmado de la solicitud (10 min) y la cookie SameSite=Lax,
+  // que no se envía en un POST cruzado. Sin sesión válida no se emite código.
   const body = await c.req.parseBody();
   const requestToken = typeof body.request === 'string' ? body.request : '';
   const decision = typeof body.decision === 'string' ? body.decision : '';

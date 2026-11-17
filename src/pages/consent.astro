@@ -69,13 +69,12 @@ if (user.email_recoverable === 1 && user.recoverable_profile) {
   }
 }
 
-const initial = client.name.trim().charAt(0).toUpperCase() || 'A';
 ---
 
 <Base title={t(locale, 'consent.title')}>
   <div class="narrow" style="max-width: 460px;">
     <div class="card">
-      <div class="app-icon" aria-hidden="true">{initial}</div>
+      <img class="app-icon" src="/inled-ring.png" alt="" width="56" height="56" />
 
       <div style="text-align: center; margin-bottom: 1.5rem;">
         <h1 class="auth-title" style="font-size: 1.5rem;">{client.name}</h1>
