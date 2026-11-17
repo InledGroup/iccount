@@ -17,6 +17,7 @@
   ],
 
   "routes": [{ "pattern": "iccount.inled.es", "custom_domain": true }],
+  "workers_dev": false,
 
   "vars": {
     "ISSUER": "https://iccount.inled.es",

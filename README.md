@@ -188,8 +188,9 @@ npx wrangler secret put SIGNING_JWK     # JWK privada ES256 (JSON, una línea)
 npm run deploy
 ```
 
-Añade el dominio `iccount.inled.es` al Worker en Cloudflare. `ISSUER`, `ACCESS_TOKEN_TTL` y
-`SESSION_TTL` están en `wrangler.jsonc`.
+`wrangler.jsonc` ya declara el dominio propio `iccount.inled.es` (`routes` + `workers_dev: false`)
+y las variables `ISSUER`, `ACCESS_TOKEN_TTL` y `SESSION_TTL`, así que `npm run deploy` publica
+directamente en https://iccount.inled.es. Los secretos viven solo en Cloudflare; nunca en el repo.
 
 ---
 
