@@ -1,0 +1,128 @@
+---
+import Base from '../layouts/Base.astro';
+import { env } from 'cloudflare:workers';
+import { readSession } from '../server/session';
+import { findUserById } from '../server/db';
+import { openFromServer } from '../server/crypto';
+import { localeFromRequest, t } from '../i18n';
+
+const bindings = env as unknown as Env;
+const locale = localeFromRequest(Astro.request);
+const session = await readSession(bindings, Astro.request);
+
+if (!session) {
+  return Astro.redirect(`/login?next=${encodeURIComponent('/account')}`);
+}
+
+const user = await findUserById(bindings.DB, session.sub);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const welcome = Astro.url.searchParams.get('welcome') === '1';
+
+let name: string | null = null;
+let email: string | null = null;
+
+if (user.email_recoverable === 1 && user.recoverable_profile) {
+  const raw = await openFromServer(bindings, user.recoverable_profile);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { email?: string | null; name?: string | null };
+      email = parsed.email ?? null;
+      name = parsed.name ?? null;
+    } catch {
+      name = null;
+    }
+  }
+}
+---
+
+<Base title={t(locale, 'account.title')}>
+  <div class="narrow">
+    {
+      welcome ? (
+        <header style="margin-bottom: 1.75rem;">
+          <h1 style="font-size: clamp(2.6rem, 8vw, 3.5rem); letter-spacing: -0.035em; line-height: 1.02;">
+            {t(locale, 'account.welcomeTitle')}
+          </h1>
+          <p class="lede" style="margin-top: 0.7rem;">
+            {t(locale, 'account.welcomeBody')}
+          </p>
+          <p class="small" style="margin-top: 0.6rem;">{t(locale, 'account.welcomeHint')}</p>
+        </header>
+      ) : (
+        <div class="auth-head">
+          <h1 class="auth-title">{t(locale, 'account.title')}</h1>
+        </div>
+      )
+    }
+
+    <section id="recovery-card" class="card" hidden style="margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.0625rem; margin-bottom: 0.4rem;">{t(locale, 'recovery.title')}</h2>
+      <p class="muted">{t(locale, 'recovery.body')}</p>
+      <code class="recovery-key" id="recovery-key"></code>
+      <div class="form-actions" style="margin-top: 1rem;">
+        <button type="button" id="download-recovery">{t(locale, 'recovery.download')}</button>
+        <button type="button" class="secondary" id="dismiss-recovery">
+          {t(locale, 'recovery.done')}
+        </button>
+      </div>
+    </section>
+
+    <div class="grouped" style="margin-bottom: 1.5rem;">
+      {
+        (name || email) && (
+          <div class="grouped-item">
+            {name && <div style="font-weight: 600;">{name}</div>}
+            {email && <div class="muted">{email}</div>}
+          </div>
+        )
+      }
+      <div class="grouped-item">
+        <a href="/developers" style="display: flex; justify-content: space-between;">
+          <span>{t(locale, 'account.developers')}</span>
+          <span aria-hidden="true" style="color: var(--text-tertiary);">›</span>
+        </a>
+      </div>
+      <div class="grouped-item">
+        <button type="button" class="plain" id="logout" style="padding: 0;">
+          {t(locale, 'account.logout')}
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 1.0625rem; margin-bottom: 0.4rem;">{t(locale, 'account.deleteTitle')}</h2>
+      <p class="muted" style="margin-bottom: 1.1rem;">{t(locale, 'account.deleteBody')}</p>
+
+      <form id="delete-form" novalidate>
+        <div class="field">
+          <label for="delete-password">{t(locale, 'account.deletePassword')}</label>
+          <input
+            id="delete-password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="delete-confirm" />
+          <span>{t(locale, 'account.deleteConfirm')}</span>
+        </label>
+
+        <p class="alert error" id="delete-error" role="alert" hidden></p>
+
+        <button type="submit" class="destructive" id="delete-submit">
+          {t(locale, 'account.deleteSubmit')}
+        </button>
+      </form>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import '../scripts/account';
+</script>

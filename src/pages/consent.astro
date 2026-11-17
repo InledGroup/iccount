@@ -1,0 +1,132 @@
+---
+import Base from '../layouts/Base.astro';
+import { env } from 'cloudflare:workers';
+import { verifyJwt, OAUTH_REQUEST_AUDIENCE } from '../server/jwt';
+import { findClient, findUserById, parseRedirectUris } from '../server/db';
+import { openFromServer } from '../server/crypto';
+import { readSession } from '../server/session';
+import { localeFromRequest, t, type MessageKey } from '../i18n';
+
+const bindings = env as unknown as Env;
+const locale = localeFromRequest(Astro.request);
+
+const requestToken = Astro.url.searchParams.get('request') ?? '';
+if (!requestToken) {
+  return Astro.redirect('/');
+}
+
+const claims = await verifyJwt(bindings, requestToken, OAUTH_REQUEST_AUDIENCE);
+if (!claims || typeof claims.client_id !== 'string' || typeof claims.redirect_uri !== 'string') {
+  return new Response('This authorization request has expired.', {
+    status: 400,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+}
+
+const session = await readSession(bindings, Astro.request);
+if (!session || session.sub !== claims.sub) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`);
+}
+
+const user = await findUserById(bindings.DB, session.sub);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const client = await findClient(bindings.DB, claims.client_id);
+if (!client) {
+  return new Response('This application no longer exists.', { status: 400 });
+}
+
+if (!parseRedirectUris(client).includes(claims.redirect_uri)) {
+  return new Response('The redirect URI is no longer valid for this application.', { status: 400 });
+}
+
+const scopes = String(claims.scope ?? '')
+  .split(' ')
+  .filter(Boolean);
+
+const SCOPE_KEYS = new Set<MessageKey>(['scope.openid', 'scope.profile', 'scope.email']);
+
+const scopeCopy = (scope: string): string => {
+  const key = `scope.${scope}` as MessageKey;
+  return SCOPE_KEYS.has(key) ? t(locale, key) : scope;
+};
+
+let displayName: string | null = null;
+let picture: string | null = null;
+
+if (user.email_recoverable === 1 && user.recoverable_profile) {
+  const raw = await openFromServer(bindings, user.recoverable_profile);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { name?: string | null; picture?: string | null };
+      displayName = parsed.name ?? null;
+      picture = parsed.picture ?? null;
+    } catch {
+      displayName = null;
+    }
+  }
+}
+
+const initial = client.name.trim().charAt(0).toUpperCase() || 'A';
+---
+
+<Base title={t(locale, 'consent.title')}>
+  <div class="narrow" style="max-width: 460px;">
+    <div class="card">
+      <div class="app-icon" aria-hidden="true">{initial}</div>
+
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <h1 class="auth-title" style="font-size: 1.5rem;">{client.name}</h1>
+        <p class="muted" style="margin-top: 0.35rem;">{t(locale, 'consent.wants')}</p>
+      </div>
+
+      {
+        displayName && (
+          <p class="notice" style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem;">
+            {picture && (
+              <img
+                src={picture}
+                alt=""
+                width="26"
+                height="26"
+                style="border-radius: 50%; flex: none;"
+              />
+            )}
+            <span>{t(locale, 'consent.signedInAs')} <strong>{displayName}</strong></span>
+          </p>
+        )
+      }
+
+      <h2
+        style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 0.35rem;"
+      >
+        {t(locale, 'consent.allowTitle')}
+      </h2>
+      <ul class="checklist" style="margin-bottom: 1.5rem;">
+        {scopes.map((scope) => <li>{scopeCopy(scope)}</li>)}
+      </ul>
+
+      <form method="post" action="/oauth/authorize/decision">
+        <input type="hidden" name="request" value={requestToken} />
+        <button type="submit" name="decision" value="approve" style="width: 100%;">
+          {t(locale, 'consent.allow')}
+        </button>
+        <button
+          type="submit"
+          name="decision"
+          value="deny"
+          class="secondary"
+          style="width: 100%; margin-top: 0.5rem;"
+        >
+          {t(locale, 'consent.deny')}
+        </button>
+      </form>
+
+      <p class="small" style="margin-top: 1rem; text-align: center;">
+        {t(locale, 'consent.redirect')} <code>{claims.redirect_uri}</code>
+      </p>
+    </div>
+  </div>
+</Base>

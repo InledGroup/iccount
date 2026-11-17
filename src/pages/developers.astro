@@ -1,0 +1,163 @@
+---
+import Base from '../layouts/Base.astro';
+import { env } from 'cloudflare:workers';
+import { readSession } from '../server/session';
+import { findUserById, listClientsByOwner, parseRedirectUris } from '../server/db';
+import { localeFromRequest, t } from '../i18n';
+
+const bindings = env as unknown as Env;
+const locale = localeFromRequest(Astro.request);
+const session = await readSession(bindings, Astro.request);
+
+if (!session) {
+  return Astro.redirect(`/login?next=${encodeURIComponent('/developers')}`);
+}
+
+if (!(await findUserById(bindings.DB, session.sub))) {
+  return Astro.redirect('/login');
+}
+
+const clients = await listClientsByOwner(bindings.DB, session.sub);
+const issuer = (bindings.ISSUER || 'https://iccount.inled.es').replace(/\/+$/, '');
+---
+
+<Base title={t(locale, 'dev.title')}>
+  <div class="stack-lg" style="max-width: 760px; margin: 0 auto;">
+    <header>
+      <h1 style="font-size: 2.25rem;">{t(locale, 'dev.title')}</h1>
+      <p class="lede" style="margin-top: 0.6rem;">{t(locale, 'dev.subtitle')}</p>
+    </header>
+
+    <section class="card">
+      <h2 class="card-section-title">{t(locale, 'dev.docs')}</h2>
+      <p class="muted" style="margin-bottom: 1rem;">{t(locale, 'dev.docsIntro')}</p>
+
+      <div class="form-actions" style="margin-bottom: 1rem;">
+        <a class="btn secondary" href="/iccount-ai-brief.md" download>
+          {t(locale, 'dev.downloadBrief')}
+        </a>
+      </div>
+
+      <p class="small" style="margin-bottom: 1.5rem;">{t(locale, 'dev.aiNote')}</p>
+
+      <div class="snippet-head">
+        <h3>{t(locale, 'dev.embedTitle')}</h3>
+        <button type="button" class="plain" data-copy-target="snippet-embed">
+          {t(locale, 'dev.copy')}
+        </button>
+      </div>
+      <p class="small" style="margin-bottom: 0.5rem;">{t(locale, 'dev.embedHint')}</p>
+      <pre id="snippet-embed"><code>{`<script src="${issuer}/iccount.js"
+        data-client-id="ic_..."
+        data-redirect-uri="https://myapp.example/callback"></script>
+
+<div data-iccount-login></div>
+
+<script>
+  Iccount.on('signedin', ({ user }) => {
+    // user = { sub, email?, name?, picture? }
+    document.querySelector('#user').textContent = user.name || user.sub;
+  });
+</script>`}</code></pre>
+
+      <p class="small" style="margin: 0.9rem 0 0;">
+        {t(locale, 'dev.quickstart')}: <code>Iccount.user()</code> ·
+        <code>Iccount.getAccessToken()</code> · <code>Iccount.signOut()</code>
+      </p>
+
+      <div style="margin-top: 1.25rem;">
+        <div class="endpoint"><span class="method">GET</span><span><code>{issuer}/.well-known/openid-configuration</code></span></div>
+        <div class="endpoint"><span class="method">GET</span><span><code>{issuer}/oauth/authorize</code></span></div>
+        <div class="endpoint"><span class="method">POST</span><span><code>{issuer}/oauth/token</code></span></div>
+        <div class="endpoint"><span class="method">GET</span><span><code>{issuer}/oauth/userinfo</code></span></div>
+        <div class="endpoint"><span class="method">GET</span><span><code>{issuer}/jwks.json</code></span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-section-title">{t(locale, 'dev.newClient')}</h2>
+      <form id="client-form" novalidate>
+        <div class="field">
+          <label for="client-name">{t(locale, 'dev.appName')}</label>
+          <input id="client-name" name="name" type="text" required maxlength="100" placeholder="Inled Notes" />
+        </div>
+
+        <div class="field">
+          <label for="client-uris">{t(locale, 'dev.redirectUris')}</label>
+          <textarea id="client-uris" name="redirectUris" rows="3" placeholder="https://notes.inled.es/callback"></textarea>
+          <p class="field-hint">{t(locale, 'dev.redirectHint')}</p>
+        </div>
+
+        <fieldset>
+          <legend>{t(locale, 'dev.scopes')}</legend>
+          <label class="checkbox"><input type="checkbox" name="scopes" value="openid" checked /> openid</label>
+          <label class="checkbox"><input type="checkbox" name="scopes" value="profile" checked /> profile</label>
+          <label class="checkbox"><input type="checkbox" name="scopes" value="email" checked /> email</label>
+        </fieldset>
+
+        <p class="alert error" id="client-error" role="alert" hidden></p>
+
+        <button type="submit" id="client-submit">{t(locale, 'dev.create')}</button>
+      </form>
+
+      <section id="client-secret" hidden style="margin-top: 1.5rem;">
+        <p class="alert success" style="margin-bottom: 0.75rem;">{t(locale, 'dev.created')}</p>
+        <pre><code id="client-secret-value"></code></pre>
+        <button type="button" class="secondary" id="client-reload" style="margin-top: 0.75rem;">
+          {t(locale, 'dev.seeList')}
+        </button>
+      </section>
+    </section>
+
+    <section class="card">
+      <h2 class="card-section-title">{t(locale, 'dev.clients')}</h2>
+      {
+        clients.length === 0 ? (
+          <p class="muted">{t(locale, 'dev.empty')}</p>
+        ) : (
+          <table class="table">
+            <thead>
+              <tr>
+                <th>{t(locale, 'dev.name')}</th>
+                <th>{t(locale, 'dev.clientId')}</th>
+                <th>{t(locale, 'dev.type')}</th>
+                <th>{t(locale, 'dev.redirect')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => (
+                <tr>
+                  <td><strong>{client.name}</strong></td>
+                  <td><code>{client.client_id}</code></td>
+                  <td class="muted">
+                    {client.client_secret_hash ? t(locale, 'dev.confidential') : t(locale, 'dev.public')}
+                  </td>
+                  <td>
+                    {parseRedirectUris(client).map((uri) => (
+                      <div><code>{uri}</code></div>
+                    ))}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="danger"
+                      data-client-id={client.client_id}
+                      data-delete-confirm={t(locale, 'dev.deleteConfirm')}
+                    >
+                      {t(locale, 'dev.delete')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      }
+    </section>
+  </div>
+</Base>
+
+<script>
+  import '../scripts/developers';
+</script>

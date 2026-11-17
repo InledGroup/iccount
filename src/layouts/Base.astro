@@ -1,0 +1,67 @@
+---
+import { env } from 'cloudflare:workers';
+import { readSession } from '../server/session';
+import { localeFromRequest, t } from '../i18n';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const locale = localeFromRequest(Astro.request);
+const { title } = Astro.props;
+const description = Astro.props.description ?? t(locale, 'meta.description');
+const session = await readSession(env as unknown as Env, Astro.request);
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title} · Inled Iccount</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f5f5f7" />
+    <link rel="icon" href="/inled-ring.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/inled-ring.png" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="inner">
+        <a class="brand" href="/" aria-label="Inled Iccount">
+          <img class="brand-ring" src="/inled-ring.png" alt="" width="26" height="26" />
+          <span>Iccount</span>
+          <span class="brand-divider" aria-hidden="true">/</span>
+          <span class="brand-sub">Inled</span>
+        </a>
+        <nav class="nav" aria-label="Iccount">
+          {
+            session ? (
+              <>
+                <a href="/developers">{t(locale, 'nav.developers')}</a>
+                <a href="/account">{t(locale, 'nav.account')}</a>
+              </>
+            ) : (
+              <a href="/login">{t(locale, 'nav.login')}</a>
+            )
+          }
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="inner">
+        <p style="display: flex; align-items: center; gap: 0.7rem; margin: 0;">
+          <img class="inled-mark" src="/inled-logo-full.png" alt="Inled" width="70" height="25" />
+          <span>{t(locale, 'footer.by')}</span>
+        </p>
+        <p style="margin: 0;">{t(locale, 'footer.tagline')}</p>
+      </div>
+    </footer>
+  </body>
+</html>

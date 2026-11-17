@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "apple-ui-designer": {
+      "source": "heyman333/atelier-ui",
+      "commit": "92b76bf8e29dc4f7bb6b5ba48ac3dbdf4f9a1872",
+      "sourceType": "github",
+      "skillPath": "skills/apple-ui-designer/SKILL.md",
+      "computedHash": "d7afa0d151750a2b7af64566886bca2cd8428c02adcc12a4d3465fc695db0bac"
+    }
+  }
+}

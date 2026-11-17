@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import { env } from 'cloudflare:workers';
+import { readSession } from '../server/session';
+import { localeFromRequest, t } from '../i18n';
+
+const locale = localeFromRequest(Astro.request);
+const session = await readSession(env as unknown as Env, Astro.request);
+
+if (session) {
+  return Astro.redirect('/account');
+}
+const next = Astro.url.searchParams.get('next') ?? '';
+const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
+---
+
+<Base title={t(locale, 'register.title')}>
+  <div class="narrow">
+    <div class="auth-head">
+      <h1 class="auth-title">{t(locale, 'register.title')}</h1>
+    </div>
+
+    <div class="card">
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="name">{t(locale, 'register.name')}</label>
+          <input id="name" name="name" type="text" autocomplete="name" maxlength="120" placeholder="Ada Lovelace" />
+        </div>
+
+        <div class="field">
+          <label for="email">{t(locale, 'register.email')}</label>
+          <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" />
+        </div>
+
+        <div class="field">
+          <label for="password">{t(locale, 'register.password')}</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="10"
+            required
+          />
+          <p class="field-hint">{t(locale, 'register.passwordHint')}</p>
+        </div>
+
+        <div class="field">
+          <label for="password-confirm">{t(locale, 'register.confirm')}</label>
+          <input
+            id="password-confirm"
+            name="password-confirm"
+            type="password"
+            autocomplete="new-password"
+            minlength="10"
+            required
+          />
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" name="recoverable" checked />
+          <span>{t(locale, 'register.share')}</span>
+        </label>
+
+        <p class="alert error" id="form-error" role="alert" hidden></p>
+        <p class="muted" id="status" style="text-align: center;" hidden>{t(locale, 'register.status')}</p>
+
+        <button type="submit" id="submit" style="width: 100%;">{t(locale, 'register.submit')}</button>
+        <p class="auth-switch">
+          {t(locale, 'register.hasAccount')} <a href={loginHref}>{t(locale, 'register.signin')}</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import '../scripts/register';
+</script>

@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { env } from 'cloudflare:workers';
+import { readSession } from '../server/session';
+import { localeFromRequest, t } from '../i18n';
+
+const locale = localeFromRequest(Astro.request);
+const session = await readSession(env as unknown as Env, Astro.request);
+
+if (session) {
+  return Astro.redirect('/account');
+}
+---
+
+<Base title={`${t(locale, 'home.title1')} ${t(locale, 'home.title2')}`}>
+  <div class="hero-screen">
+    <section class="hero">
+      <div class="hero-ring">
+        <img src="/inled-ring.png" alt="" width="118" height="118" />
+      </div>
+      <h1>{t(locale, 'home.title1')}<br />{t(locale, 'home.title2')}</h1>
+      <p class="lede">{t(locale, 'home.subtitle')}</p>
+      <div class="hero-actions">
+        <a class="btn" href="/register">{t(locale, 'home.create')}</a>
+        <a class="btn secondary" href="/login">{t(locale, 'home.signin')}</a>
+      </div>
+    </section>
+  </div>
+</Base>

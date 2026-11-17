@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "iccount",
+  "main": "src/app.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // All persistent state lives in D1 (free tier: 5M reads / 100k writes a day).
+  // No KV namespaces on purpose: KV's 1k writes/day limit is too small for codes.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "iccount",
+      "database_id": "e9d36176-bb9d-44b1-88ef-9419618cd036"
+    }
+  ],
+
+  "routes": [{ "pattern": "iccount.inled.es", "custom_domain": true }],
+
+  "vars": {
+    "ISSUER": "https://iccount.inled.es",
+    "ACCESS_TOKEN_TTL": "3600",
+    "SESSION_TTL": "43200"
+  }
+}
