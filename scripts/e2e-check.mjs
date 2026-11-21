@@ -235,23 +235,29 @@ const firstPartyCode = firstPartyCallback.searchParams.get('code');
 assert.ok(firstPartyCode);
 step('cliente de primera parte omite el consentimiento');
 
-const basic = Buffer.from('ic_inled_notes:dev-secret-change-me').toString('base64');
-const confidential = await fetch(`${base}/oauth/token`, {
-  method: 'POST',
-  headers: {
-    'content-type': 'application/x-www-form-urlencoded',
-    authorization: `Basic ${basic}`,
-  },
-  body: new URLSearchParams({
-    grant_type: 'authorization_code',
-    code: firstPartyCode,
-    redirect_uri: redirectUri,
-    code_verifier: firstParty.verifier,
-  }),
-});
-const confidentialText = await confidential.text();
-assert.equal(confidential.status, 200, confidentialText);
-step('canje con client_secret (HTTP Basic)');
+// The demo client secret lives only in the local, untracked seeds.sql.
+const demoSecret = process.env.IC_DEMO_CLIENT_SECRET;
+if (demoSecret) {
+  const basic = Buffer.from(`ic_inled_notes:${demoSecret}`).toString('base64');
+  const confidential = await fetch(`${base}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      authorization: `Basic ${basic}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: firstPartyCode,
+      redirect_uri: redirectUri,
+      code_verifier: firstParty.verifier,
+    }),
+  });
+  const confidentialText = await confidential.text();
+  assert.equal(confidential.status, 200, confidentialText);
+  step('canje con client_secret (HTTP Basic)');
+} else {
+  step('canje con client_secret omitido (define IC_DEMO_CLIENT_SECRET)');
+}
 
 const wrongSecret = await fetch(`${base}/oauth/token`, {
   method: 'POST',

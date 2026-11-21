@@ -49,8 +49,10 @@ local, así que las rutas de Hono y las páginas de Astro comparten entorno, bas
 Con `npm run dev` funcionando, en otra terminal:
 
 ```bash
-npm run test:e2e
+IC_DEMO_CLIENT_SECRET=<secreto de tu seeds.sql> npm run test:e2e
 ```
+
+Sin esa variable el test omite solo el canje con `client_secret`; el resto se ejecuta igual.
 
 El script (`scripts/e2e-check.mjs`) usa el **mismo** `src/lib/crypto-client.js` que el navegador y
 comprueba, contra el servidor real:
@@ -83,9 +85,11 @@ comprueba, contra el servidor real:
      &code_challenge_method=S256
    ```
 
-   `ic_demo_spa` (terceros) muestra la pantalla de consentimiento; `ic_inled_notes` (primera parte,
-   secreto `dev-secret-change-me`) la omite. El callback de demo no existe como página, así que el
-   navegador acabará en un 404 con `?code=...` en la URL: es lo esperado, el código ya está emitido.
+   `ic_demo_spa` (terceros) muestra la pantalla de consentimiento; `ic_inled_notes` (primera parte)
+   la omite. El secreto del cliente de primera parte no está en el repo: vive solo en tu
+   `seeds.sql` local y el e2e lo recibe por `IC_DEMO_CLIENT_SECRET`. El callback de demo no
+   existe como página, así que el navegador acabará en un 404 con `?code=...` en la URL: es lo
+   esperado, el código ya está emitido.
 
 Los clientes de `seeds.sql` solo existen en local.
 

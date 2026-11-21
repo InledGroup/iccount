@@ -276,5 +276,5 @@ Handle `error` on the callback for every case and show a retry button.
 - Issuer in local: `http://localhost:4321` (`npm run dev` in the Iccount repository).
 - Demo third-party client: `ic_demo_spa`, redirect `http://localhost:4321/demo-callback`
   (shows the consent screen).
-- Demo first-party client: `ic_inled_notes`, secret `dev-secret-change-me`.
+- Demo first-party client: `ic_inled_notes`; its secret stays in the local, untracked `seeds.sql`.
 - Local accounts live in `.wrangler/state` (D1); reset with `npm run db:init`.
